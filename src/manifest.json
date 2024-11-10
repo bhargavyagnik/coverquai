@@ -1,0 +1,21 @@
+{
+    "manifest_version": 3,
+    "name": "Cover Letter Generator",
+    "version": "0.0.1",
+    "description": "Automatically generate cover letters based on job descriptions",
+    "permissions": [
+      "activeTab",
+      "storage",
+      "scripting"
+    ],
+    "action": {
+      "default_popup": "popup.html"
+    },
+    "background": {
+      "service_worker": "background.js"
+    },
+    "content_scripts": [{
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }]
+  }

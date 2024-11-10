@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Cover Letter Generator</title>
+  <style>
+    body {
+      width: 400px;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    button {
+      padding: 10px;
+      cursor: pointer;
+    }
+    #status {
+      margin-top: 10px;
+      color: #666;
+    }
+    #preview {
+      margin-top: 15px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Cover Letter Generator</h2>
+    <input type="file" id="resumeUpload" accept=".pdf,.doc,.docx,.txt">
+    <button id="generateBtn">Generate Cover Letter</button>
+    <button id="downloadBtn">Download</button>
+    <div id="status"></div>
+    <div id="preview"></div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
