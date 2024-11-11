@@ -35,12 +35,10 @@ jobs:
             CHANGELOG=$(git log ${LAST_TAG}..HEAD --pretty=format:"* %s (%h)" --no-merges)
           fi
           
-          # Escape newlines and special characters for GitHub Actions
-          CHANGELOG="${CHANGELOG//'%'/'%25'}"
-          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
-          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
-          
-          echo "changelog=$CHANGELOG" >> $GITHUB_OUTPUT
+          # Store raw changelog without escaping
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create ZIP file
         run: |
