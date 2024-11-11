@@ -1,5 +1,5 @@
 chrome.runtime.onInstalled.addListener(() => {
-    console.log('Cover Letter Generator Extension installed');
+    console.log('Coverquai Extension installed');
   });
   
   // Handle any background tasks, API calls, etc.
@@ -34,8 +34,8 @@ chrome.runtime.onInstalled.addListener(() => {
             defaultModel: 'llama-3.1-8b-instruct',
             resumeText: data.resumeData // Fall back to provided resume if no default
         });
-
-        const response = await fetch('http://localhost:8000/generate-cover-letter', {
+        
+        const response = await fetch('https://cvwriter-bhargavyagniks-projects.vercel.app/generate-cover-letter', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -1,2 +1,6 @@
 temp.txt
 src/extension/lib/*
+extension.crx
+extension.pem
+.DS_Store
+extension.zip

@@ -13,14 +13,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   
   function scrapeCurrentPage() {
-    if (window.location.href.includes('indeed.com')) {
-        description = document.querySelector('#job-details > div > p')?.textContent || '';
-    }
     if (window.location.href.includes('linkedin.com')) {
       const description = document.querySelector('#job-details > div > p')?.textContent || '';
       return {
-        title: "Job",//title.trim(),
-        company: "Company",//company.trim(),
+        title: "-",//title.trim(),
+        company: "-",//company.trim(),
         description: description,//description.trim(),
       };
     }

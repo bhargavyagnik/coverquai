@@ -1,8 +1,14 @@
 {
     "manifest_version": 3,
-    "name": "Cover Letter Generator",
+    "name": "Coverquai",
     "version": "0.0.1",
     "description": "Automatically generate cover letters based on job descriptions",
+    "icons": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
     "permissions": [
       "activeTab",
       "storage",
@@ -18,14 +24,7 @@
     "content_scripts": [{
       "matches": ["<all_urls>"],
       "js": ["content.js"]
-    }],
-    "host_permissions": [
-      "<all_urls>"
-    ],
-    "web_accessible_resources": [{
-    "resources": ["lib/*"],
-    "matches": ["<all_urls>"]
-  }]
+    }]
   }
 
   

@@ -1,8 +1,129 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Cover Letter Generator Settings</title>
-    <link rel="stylesheet" type="text/css" href="options.css">
+    <title>Coverquai Settings</title>
+    <style>
+        body {
+            padding: 20px;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            background-color: #f5f7fa;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        h1 {
+            color: #1e293b;
+            font-size: 1.5rem;
+            margin-bottom: 24px;
+            font-weight: 600;
+        }
+
+        .setting-group {
+            margin-bottom: 20px;
+            padding: 16px;
+            background-color: #f8fafc;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #475569;
+        }
+
+        input[type="text"],
+        input[type="file"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+            background-color: #ffffff;
+            transition: border-color 0.2s ease;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .help-text {
+            font-size: 14px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        .button-group {
+            margin-top: 24px;
+            text-align: center;
+        }
+
+        button {
+            padding: 12px 16px;
+            background-color: #2563eb;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #1d4ed8;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        #status {
+            display: inline-block;
+            margin-left: 10px;
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .current-value {
+            display: block;
+            font-size: 14px;
+            color: #64748b;
+            margin-top: 8px;
+            word-break: break-all;
+        }
+
+        .coffee-link {
+            text-align: center;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .coffee-link a {
+            color: #64748b;
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s ease;
+        }
+
+        .coffee-link a:hover {
+            color: #2563eb;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -31,6 +152,10 @@
         <div class="button-group">
             <button id="save">Save Settings</button>
             <span id="status"></span>
+        </div>
+
+        <div class="coffee-link">
+            <a href="https://buymeacoffee.com/bhargavyagnik" target="_blank"> This is an opensource Project, Please support the work, Buy me a coffee</a>
         </div>
     </div>
     <script src="options.js"></script>

@@ -2,39 +2,51 @@ document.addEventListener('DOMContentLoaded', async function() {
     let resumeData = null;
     const statusDiv = document.getElementById('status');
     const previewDiv = document.getElementById('preview');
+    const resumeUploadInput = document.getElementById('resumeUpload');
+    const resumeStatus = document.getElementById('resumeStatus');
     
     // Check for default resume in storage
     try {
         const storage = await chrome.storage.sync.get(['resumeText', 'resumePath']);
         if (storage.resumeText) {
             resumeData = storage.resumeText;
-            statusDiv.textContent = `Using default resume: ${storage.resumePath}`;
             
-            // Optionally show a "Clear Default" button
+            // Show current resume status and clear button
+            const statusContainer = document.createElement('div');
+            statusContainer.style.display = 'flex';
+            statusContainer.style.alignItems = 'center';
+            statusContainer.style.gap = '10px';
+            
+            const statusText = document.createElement('span');
+            statusText.textContent = `Current: ${storage.resumePath}`;
+            
             const clearButton = document.createElement('button');
-            clearButton.textContent = 'Clear Default Resume';
-            clearButton.style.marginLeft = '10px';
+            clearButton.textContent = 'Clear';
+            clearButton.style.padding = '2px 8px';
             clearButton.onclick = async () => {
                 await chrome.storage.sync.remove(['resumeText', 'resumePath']);
                 resumeData = null;
-                statusDiv.textContent = 'Default resume cleared';
-                clearButton.remove();
+                statusContainer.remove();
+                resumeUploadInput.value = '';
             };
-            statusDiv.appendChild(clearButton);
+            
+            statusContainer.appendChild(statusText);
+            statusContainer.appendChild(clearButton);
+            resumeStatus.appendChild(statusContainer);
         }
     } catch (error) {
         console.error('Error loading default resume:', error);
     }
     
     // Handle resume upload
-    document.getElementById('resumeUpload').addEventListener('change', async (event) => {
+    resumeUploadInput.addEventListener('change', async (event) => {
         const file = event.target.files[0];
         if (file) {
             try {
                 const formData = new FormData();
                 formData.append('file', file);
         
-                const response = await fetch('http://localhost:8000/upload-resume', {
+                const response = await fetch('https://cvwriter-bhargavyagniks-projects.vercel.app/upload-resume', {
                     method: 'POST',
                     body: formData
                 });
@@ -45,25 +57,37 @@ document.addEventListener('DOMContentLoaded', async function() {
         
                 const data = await response.json();
                 resumeData = data.resume_text;
-                // Store in local storage for temporary use
                 chrome.storage.local.set({ 'resume': resumeData });
-                statusDiv.textContent = 'Resume uploaded successfully!';
                 
-                // Ask user if they want to set this as default
+                // Clear previous status
+                resumeStatus.innerHTML = '';
+                
+                // Create status container
+                const statusContainer = document.createElement('div');
+                statusContainer.style.display = 'flex';
+                statusContainer.style.alignItems = 'center';
+                statusContainer.style.gap = '10px';
+                
+                const statusText = document.createElement('span');
+                statusText.textContent = 'Resume uploaded!';
+                
                 const setDefaultBtn = document.createElement('button');
                 setDefaultBtn.textContent = 'Set as Default';
-                setDefaultBtn.style.marginLeft = '10px';
+                setDefaultBtn.style.padding = '2px 8px';
                 setDefaultBtn.onclick = async () => {
                     await chrome.storage.sync.set({
                         resumeText: resumeData,
                         resumePath: file.name
                     });
-                    statusDiv.textContent = `Set as default resume: ${file.name}`;
+                    statusText.textContent = `Default: ${file.name}`;
                     setDefaultBtn.remove();
                 };
-                statusDiv.appendChild(setDefaultBtn);
+                
+                statusContainer.appendChild(statusText);
+                statusContainer.appendChild(setDefaultBtn);
+                resumeStatus.appendChild(statusContainer);
             } catch (error) {
-                statusDiv.textContent = 'Error uploading resume: ' + error.message;
+                resumeStatus.textContent = 'Error: ' + error.message;
             }
         }
     });
@@ -79,10 +103,24 @@ document.addEventListener('DOMContentLoaded', async function() {
         const companyName = document.getElementById('companyName').value.trim();
         const jobDescription = document.getElementById('jobDescription').value.trim();
 
-        // if (!jobTitle || !companyName || !jobDescription) {
-        //     statusDiv.textContent = 'Please fill in all job details';
-        //     return;
-        // }
+        if (!jobDescription) {
+            // Try to scrape job details from current tab first
+            try {
+                const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+                const response = await chrome.tabs.sendMessage(tab.id, {action: 'scrapeJobDetails'});
+                
+                if (response?.jobDetails) {
+                    document.getElementById('jobTitle').value = response.jobDetails.title;
+                    document.getElementById('companyName').value = response.jobDetails.company;
+                    document.getElementById('jobDescription').value = response.jobDetails.description;
+                    return;
+                }
+            } catch (error) {
+                console.log('Could not scrape job details:', error);
+                statusDiv.textContent = 'Please fill in all job details';
+                return;
+            }
+        }
 
         statusDiv.textContent = 'Generating cover letter...';
         
@@ -138,6 +176,19 @@ document.addEventListener('DOMContentLoaded', async function() {
             statusDiv.textContent = 'No cover letter to download';
         }
     });
+
+    
+
+    // Set up toggle functionality
+    document.getElementById('additionalDetailsBtn').addEventListener('click', function() {
+        const dropdownContent = document.getElementById('additionalDetails');
+        dropdownContent.classList.toggle('active');
+        
+        // Update button text
+        this.textContent = dropdownContent.classList.contains('active') 
+            ? '- Additional Details' 
+            : '+ Additional Details';
+    });
   });
   
   async function generateCoverLetter(jobDetails, resumeData) {
@@ -192,42 +243,60 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
 
-  function downloadCoverLetter(content) {
-    // Create new jsPDF instance using the window.jspdf namespace
+  async function downloadCoverLetter(content) {
     const { jsPDF } = window.jspdf;
-    
     const doc = new jsPDF({
-      unit: 'pt',
-      format: 'letter'
+        unit: 'pt',
+        format: 'letter'
     });
-  
-    // Rest of your download function remains the same
-    doc.setFont('helvetica');
+
+    doc.setFont('times', 'normal');
     doc.setFontSize(12);
-  
-    const splitText = doc.splitTextToSize(
-      content.replace(/\n{2,}/g, '\n\n').trim(),
-      doc.internal.pageSize.width - 80
-    );
-  
-    let yPosition = 60;
-    const lineHeight = 14;
+
+    const pageWidth = doc.internal.pageSize.width;
     const margin = 40;
-  
-    splitText.forEach(line => {
-      if (yPosition > doc.internal.pageSize.height - margin) {
-        doc.addPage();
-        yPosition = margin + 20;
-      }
-      doc.text(margin, yPosition, line);
-      yPosition += lineHeight;
-    });
-    const pathtosave = 'cover_letter.pdf'
-    // Check storage for default cover letter name
-    chrome.storage.sync.get(['coverLetterName'], function(result) {
-        if (result.coverLetterName) {
-            pathtosave = result.coverLetterName + '.pdf';
+    const maxWidth = pageWidth - (margin * 2);
+    let yPosition = 60;
+
+    // Split content into paragraphs
+    const paragraphs = content.split(/\n{2,}/g);
+
+    paragraphs.forEach(paragraph => {
+        // Add justified text with maximum width
+        const textHeight = doc.getTextDimensions(paragraph, {
+            maxWidth: maxWidth,
+            align: 'justify'
+        }).h;
+
+        // Check if we need a new page
+        if (yPosition + textHeight > doc.internal.pageSize.height - margin) {
+            doc.addPage();
+            yPosition = margin + 20;
         }
+
+        doc.text(paragraph.trim(), margin, yPosition, {
+            maxWidth: maxWidth,
+            align: 'justify'
+        });
+
+        yPosition += textHeight + 20; // Add some spacing between paragraphs
     });
-    doc.save(pathtosave);
+
+    // Get company name from form
+    const companyName = document.getElementById('companyName').value.trim();
+    
+    // Get the cover letter name format from storage
+    const storage = await chrome.storage.sync.get({
+        coverLetterName: 'cover-letter-{company}' // default value if not set
+    });
+    
+    // Replace {company} placeholder with actual company name
+    let fileName = storage.coverLetterName.replace('{company}', companyName);
+    
+    // Add .pdf extension if not present
+    if (!fileName.toLowerCase().endsWith('.pdf')) {
+        fileName += '.pdf';
+    }
+
+    doc.save(fileName);
   }

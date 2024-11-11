@@ -53,6 +53,7 @@ async def upload_resume(file: UploadFile):
 async def generate_cover_letter_stream(job_details: JobDetails,resume_text: str, model: str):
     async with httpx.AsyncClient() as client:
         try:
+            
             if model == "llama-3.1-8b-instruct":
 
                 response = await client.post(
@@ -75,9 +76,17 @@ async def generate_cover_letter_stream(job_details: JobDetails,resume_text: str,
                     ],
                     "stream": True
                 },
-                timeout=None
-                )
+                timeout=None)
+                async for line in response.aiter_lines():
+                    if line.startswith("data: "):
+                        try:
+                            data = json.loads(line[6:])
+                            if content := data.get("choices", [{}])[0].get("delta", {}).get("content"):
+                                yield f"data: {json.dumps({'content': content})}\n\n"
+                        except json.JSONDecodeError:
+                            continue
             elif model =='mixtral-8x7b-32768':
+                print(f"Bearer {os.getenv('GROQ_API_KEY')}")
                 response = await client.post(
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={
@@ -96,19 +105,21 @@ async def generate_cover_letter_stream(job_details: JobDetails,resume_text: str,
                             "content": f"Write a professional cover letter for a {job_details.title} position at {job_details.company}. Use my resume details to highlight relevant experience. Format it as a standard business letter. Job description: {job_details.description}. Resume: {resume_text}"
                         }
                     ],
-                    "stream": True
-                },
-                timeout=None
-                )
-            
-            async for line in response.aiter_lines():
-                if line.startswith("data: "):
-                    try:
-                        data = json.loads(line[6:])
-                        if content := data.get("choices", [{}])[0].get("delta", {}).get("content"):
-                            yield f"data: {json.dumps({'content': content})}\n\n"
-                    except json.JSONDecodeError:
-                        continue
+                    "stream": True,
+                })
+                async for line in response.aiter_lines():
+                    print(line)
+                    if line.startswith("data: "):
+                        try:
+                            if line.strip() == "data: [DONE]":
+                                break
+                                
+                            data = json.loads(line[6:])  # Remove "data: " prefix
+                            if content := data.get("choices", [{}])[0].get("delta", {}).get("content"):
+                                if content.strip():  # Only yield non-empty content
+                                    yield f"data: {json.dumps({'content': content})}\n\n"
+                        except json.JSONDecodeError:
+                            continue
 
                             
         except Exception as e:
