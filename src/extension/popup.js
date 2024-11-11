@@ -8,7 +8,20 @@ document.addEventListener('DOMContentLoaded', function() {
       const file = event.target.files[0];
       if (file) {
         try {
-          resumeData = await readFileContent(file);
+          const formData = new FormData();
+          formData.append('file', file);
+    
+          const response = await fetch('http://localhost:8000/upload-resume', {
+            method: 'POST',
+            body: formData
+          });
+    
+          if (!response.ok) {
+            throw new Error('Failed to upload resume');
+          }
+    
+          const data = await response.json();
+          resumeData = data.resume_text;
           chrome.storage.local.set({ 'resume': resumeData });
           statusDiv.textContent = 'Resume uploaded successfully!';
         } catch (error) {
@@ -16,6 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
     });
+    
   
     // Handle generate button click
     document.getElementById('generateBtn').addEventListener('click', async () => {
@@ -30,7 +44,6 @@ document.addEventListener('DOMContentLoaded', function() {
           if (response.error) {
             throw new Error(response.error);
           }
-          alert(resumeData);
           const coverLetter = await generateCoverLetter(response.jobDetails, resumeData);
           previewDiv.textContent = coverLetter;
           statusDiv.textContent = 'Cover letter generated successfully!';
@@ -51,49 +64,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
   
-  // Helper functions
-  async function readFileContent(file) {
-    return new Promise((resolve, reject) => {
-      if (file.type === 'application/pdf') {
-        // Handle PDF files
-        const reader = new FileReader();
-        reader.onload = async function(event) {
-          try {
-            const typedArray = new Uint8Array(event.target.result);
-            const pdf = await pdfjsLib.getDocument(typedArray).promise;
-            let fullText = '';
-            
-            // Extract text from each page
-            for (let i = 1; i <= pdf.numPages; i++) {
-              const page = await pdf.getPage(i);
-              const textContent = await page.getTextContent();
-              const pageText = textContent.items
-                .map(item => item.str)
-                .join(' ');
-              
-              fullText += pageText + '\n';
-            }
-            
-            resolve(fullText.trim());
-          } catch (error) {
-            reject(new Error('Error parsing PDF: ' + error.message));
-          }
-        };
-        reader.onerror = () => reject(new Error('Error reading file'));
-        reader.readAsArrayBuffer(file);
-        
-      } else if (file.type === 'text/plain') {
-        // Handle text files
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = () => reject(new Error('Error reading file'));
-        reader.readAsText(file);
-        
-      } else {
-        reject(new Error('Unsupported file type. Please upload a PDF or text file.'));
-      }
-    });
-  }
   async function generateCoverLetter(jobDetails, resumeData) {
     const previewDiv = document.getElementById('preview');
     previewDiv.textContent = ''; // Clear existing content

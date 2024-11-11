@@ -15,8 +15,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   function scrapeCurrentPage() {
     // This is a basic example - you'll need to customize based on specific job sites
     // const title = document.querySelector('h1')?.textContent || 'Job Title';
-    // const company = document.querySelector('.company-name')?.textContent || 'Company Name';
-    // const description = document.querySelector('.job-description')?.textContent || '';
+    const company = document.querySelector('')?.textContent || 'Company Name';
+    const description = document.querySelector('#job-details > div > p')?.textContent || '';
     
     return {
       title: "Job",//title.trim(),

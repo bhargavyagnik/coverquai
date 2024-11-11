@@ -25,6 +25,10 @@ class JobDetails(BaseModel):
     description: str
     url: str
 
+class CoverLetterRequest(BaseModel):
+    job_details: JobDetails
+    resume_text: str
+
 @app.post("/upload-resume")
 async def upload_resume(file: UploadFile):
     try:
@@ -46,7 +50,7 @@ async def upload_resume(file: UploadFile):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-async def generate_cover_letter_stream(resume_text: str, job_details: JobDetails):
+async def generate_cover_letter_stream(job_details: JobDetails,resume_text: str):
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
@@ -60,11 +64,11 @@ async def generate_cover_letter_stream(resume_text: str, job_details: JobDetails
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are a professional cover letter writer."
+                            "content": "You are a professional cover letter writer. Provide only the cover letter content without any additional commentary, explanations, or formatting instructions."
                         },
                         {
                             "role": "user",
-                            "content": f"Write a cover letter for a {job_details.title} position at {job_details.company}. Job description: {job_details.description}. Resume: {resume_text}"
+                            "content": f"Write a professional cover letter for a {job_details.title} position at {job_details.company}. Use my resume details to highlight relevant experience. Format it as a standard business letter. Job description: {job_details.description}. Resume: {resume_text}"
                         }
                     ],
                     "stream": True
@@ -84,13 +88,19 @@ async def generate_cover_letter_stream(resume_text: str, job_details: JobDetails
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
+
 @app.post("/generate-cover-letter")
 async def generate_cover_letter(
-    job_details: JobDetails,
-    resume_text: str,
-    api_key: str
+    request: CoverLetterRequest
 ):
     return StreamingResponse(
-        generate_cover_letter_stream(resume_text, job_details, api_key),
+        generate_cover_letter_stream(request.job_details, request.resume_text),
         media_type="text/event-stream"
     )
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "alive",
+        "service": "cover-letter-generator"
+    }
