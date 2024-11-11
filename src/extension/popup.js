@@ -1,66 +1,142 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     let resumeData = null;
     const statusDiv = document.getElementById('status');
     const previewDiv = document.getElementById('preview');
     
+    // Check for default resume in storage
+    try {
+        const storage = await chrome.storage.sync.get(['resumeText', 'resumePath']);
+        if (storage.resumeText) {
+            resumeData = storage.resumeText;
+            statusDiv.textContent = `Using default resume: ${storage.resumePath}`;
+            
+            // Optionally show a "Clear Default" button
+            const clearButton = document.createElement('button');
+            clearButton.textContent = 'Clear Default Resume';
+            clearButton.style.marginLeft = '10px';
+            clearButton.onclick = async () => {
+                await chrome.storage.sync.remove(['resumeText', 'resumePath']);
+                resumeData = null;
+                statusDiv.textContent = 'Default resume cleared';
+                clearButton.remove();
+            };
+            statusDiv.appendChild(clearButton);
+        }
+    } catch (error) {
+        console.error('Error loading default resume:', error);
+    }
+    
     // Handle resume upload
     document.getElementById('resumeUpload').addEventListener('change', async (event) => {
-      const file = event.target.files[0];
-      if (file) {
-        try {
-          const formData = new FormData();
-          formData.append('file', file);
-    
-          const response = await fetch('http://localhost:8000/upload-resume', {
-            method: 'POST',
-            body: formData
-          });
-    
-          if (!response.ok) {
-            throw new Error('Failed to upload resume');
-          }
-    
-          const data = await response.json();
-          resumeData = data.resume_text;
-          chrome.storage.local.set({ 'resume': resumeData });
-          statusDiv.textContent = 'Resume uploaded successfully!';
-        } catch (error) {
-          statusDiv.textContent = 'Error uploading resume: ' + error.message;
+        const file = event.target.files[0];
+        if (file) {
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+        
+                const response = await fetch('http://localhost:8000/upload-resume', {
+                    method: 'POST',
+                    body: formData
+                });
+        
+                if (!response.ok) {
+                    throw new Error('Failed to upload resume');
+                }
+        
+                const data = await response.json();
+                resumeData = data.resume_text;
+                // Store in local storage for temporary use
+                chrome.storage.local.set({ 'resume': resumeData });
+                statusDiv.textContent = 'Resume uploaded successfully!';
+                
+                // Ask user if they want to set this as default
+                const setDefaultBtn = document.createElement('button');
+                setDefaultBtn.textContent = 'Set as Default';
+                setDefaultBtn.style.marginLeft = '10px';
+                setDefaultBtn.onclick = async () => {
+                    await chrome.storage.sync.set({
+                        resumeText: resumeData,
+                        resumePath: file.name
+                    });
+                    statusDiv.textContent = `Set as default resume: ${file.name}`;
+                    setDefaultBtn.remove();
+                };
+                statusDiv.appendChild(setDefaultBtn);
+            } catch (error) {
+                statusDiv.textContent = 'Error uploading resume: ' + error.message;
+            }
         }
-      }
     });
-    
-  
+
     // Handle generate button click
     document.getElementById('generateBtn').addEventListener('click', async () => {
-      statusDiv.textContent = 'Generating cover letter...';
-      
-      try {
-        // Get the current tab
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!resumeData) {
+            statusDiv.textContent = 'Please upload a resume or set a default resume first';
+            return;
+        }
+
+        const jobTitle = document.getElementById('jobTitle').value.trim();
+        const companyName = document.getElementById('companyName').value.trim();
+        const jobDescription = document.getElementById('jobDescription').value.trim();
+
+        // if (!jobTitle || !companyName || !jobDescription) {
+        //     statusDiv.textContent = 'Please fill in all job details';
+        //     return;
+        // }
+
+        statusDiv.textContent = 'Generating cover letter...';
         
-        // Request job details from content script
-        chrome.tabs.sendMessage(tab.id, { action: 'scrapeJobDetails' }, async (response) => {
-          if (response.error) {
-            throw new Error(response.error);
-          }
-          const coverLetter = await generateCoverLetter(response.jobDetails, resumeData);
-          previewDiv.textContent = coverLetter;
-          statusDiv.textContent = 'Cover letter generated successfully!';
-        });
-      } catch (error) {
-        statusDiv.textContent = 'Error generating cover letter: ' + error.message;
-      }
+        try {
+            const jobDetails = {
+                title: jobTitle,
+                company: companyName,
+                description: jobDescription
+            };
+
+            const coverLetter = await generateCoverLetter(jobDetails, resumeData);
+            previewDiv.textContent = coverLetter;
+            statusDiv.textContent = 'Cover letter generated successfully!';
+        } catch (error) {
+            statusDiv.textContent = 'Error generating cover letter: ' + error.message;
+        }
     });
-  
+
+    // Add auto-save functionality for form fields
+    ['jobTitle', 'companyName', 'jobDescription'].forEach(fieldId => {
+        const element = document.getElementById(fieldId);
+        
+        // Load saved value
+        chrome.storage.local.get(fieldId, (result) => {
+            if (result[fieldId]) {
+                element.value = result[fieldId];
+            }
+        });
+
+        // Save on change
+        element.addEventListener('input', (e) => {
+            chrome.storage.local.set({ [fieldId]: e.target.value });
+        });
+    });
+
+    // Optional: Add a clear form button
+    const clearFormBtn = document.createElement('button');
+    clearFormBtn.textContent = 'Clear Form';
+    clearFormBtn.onclick = () => {
+        document.getElementById('jobTitle').value = '';
+        document.getElementById('companyName').value = '';
+        document.getElementById('jobDescription').value = '';
+        chrome.storage.local.remove(['jobTitle', 'companyName', 'jobDescription']);
+    };
+    document.querySelector('.container').insertBefore(clearFormBtn, document.getElementById('status'));
+
     // Handle download button click
     document.getElementById('downloadBtn').addEventListener('click', () => {
-      const coverLetter = previewDiv.textContent;
-      if (coverLetter) {
-        downloadCoverLetter(coverLetter);
-      } else {
-        statusDiv.textContent = 'No cover letter to download';
-      }
+        const coverLetter = previewDiv.textContent;
+        if (coverLetter) {
+            downloadCoverLetter(coverLetter);
+        } else {
+            statusDiv.textContent = 'No cover letter to download';
+        }
     });
   });
   
@@ -146,6 +222,12 @@ document.addEventListener('DOMContentLoaded', function() {
       doc.text(margin, yPosition, line);
       yPosition += lineHeight;
     });
-  
-    doc.save('cover-letter.pdf');
+    const pathtosave = 'cover_letter.pdf'
+    // Check storage for default cover letter name
+    chrome.storage.sync.get(['coverLetterName'], function(result) {
+        if (result.coverLetterName) {
+            pathtosave = result.coverLetterName + '.pdf';
+        }
+    });
+    doc.save(pathtosave);
   }

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cover Letter Generator Settings</title>
+    <link rel="stylesheet" type="text/css" href="options.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Settings</h1>
+        
+        <div class="setting-group">
+            <label for="defaultResume">Default Resume Path:</label>
+            <input type="file" id="defaultResume" accept=".pdf,.txt">
+            <span id="currentResumePath" class="current-value"></span>
+        </div>
+
+        <div class="setting-group">
+            <label for="coverLetterName">Default Cover Letter Name:</label>
+            <input type="text" id="coverLetterName" placeholder="cover-letter-{company}">
+            <p class="help-text">Use {company} as a placeholder for the company name</p>
+        </div>
+
+        <div class="setting-group">
+            <label for="modelSelect">Default AI Model:</label>
+            <select id="modelSelect">
+                <option value="llama-3.1-8b-instruct">Llama 3.1 8B</option>
+                <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+            </select>
+        </div>
+
+        <div class="button-group">
+            <button id="save">Save Settings</button>
+            <span id="status"></span>
+        </div>
+    </div>
+    <script src="options.js"></script>
+</body>
+</html> 

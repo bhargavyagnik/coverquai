@@ -29,56 +29,74 @@ chrome.runtime.onInstalled.addListener(() => {
 
   async function handleLLMRequest(data, port) {
     try {
-      // Use the FastAPI backend
-      const response = await fetch('http://localhost:8000/generate-cover-letter', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          job_details: data.jobDetails,
-          resume_text: data.resumeData
-        })
-      });
-  
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.statusText}`);
-      }
-  
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-  
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          port.postMessage({ type: 'done' });
-          break;
+        // Get settings from storage
+        const settings = await chrome.storage.sync.get({
+            defaultModel: 'llama-3.1-8b-instruct',
+            resumeText: data.resumeData // Fall back to provided resume if no default
+        });
+
+        const response = await fetch('http://localhost:8000/generate-cover-letter', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'text/event-stream'
+            },
+            body: JSON.stringify({
+                job_details: data.jobDetails,
+                resume_text: settings.resumeText,
+                model: settings.defaultModel // Add model to your API request
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API request failed: ${response.statusText}`);
         }
-  
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
-        
-        for (const line of lines) {
-          if (line.trim() === '') continue;
-          if (!line.startsWith('data: ')) continue;
-          
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.error) {
-              throw new Error(data.error);
+
+        // Create a new ReadableStream from the response
+        const reader = response.body
+            .pipeThrough(new TextDecoderStream())
+            .getReader();
+
+        while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) {
+                port.postMessage({ type: 'done' });
+                break;
             }
-            if (data.content) {
-              port.postMessage({ 
-                type: 'stream',
-                content: data.content
-              });
+
+            // Split the chunk into individual SSE messages
+            const messages = value.split('\n\n');
+            
+            for (const message of messages) {
+                if (!message.trim() || !message.startsWith('data: ')) continue;
+                
+                try {
+                    const jsonStr = message.replace('data: ', '');
+                    const parsedData = JSON.parse(jsonStr);
+                    
+                    if (parsedData.error) {
+                        throw new Error(parsedData.error);
+                    }
+                    
+                    if (parsedData.content) {
+                        port.postMessage({
+                            type: 'stream',
+                            content: parsedData.content
+                        });
+                    }
+                } catch (e) {
+                    console.warn('Failed to parse message:', message, e);
+                }
             }
-          } catch (e) {
-            console.warn('Failed to parse line:', line, e);
-          }
         }
-      }
     } catch (error) {
-      throw new Error('Failed to generate cover letter: ' + error.message);
+        port.postMessage({
+            type: 'error',
+            error: 'Failed to generate cover letter: ' + error.message
+        });
+    } finally {
+        // Ensure we always send a done message
+        port.postMessage({ type: 'done' });
     }
-  }
+}

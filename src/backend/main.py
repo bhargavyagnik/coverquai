@@ -23,11 +23,11 @@ class JobDetails(BaseModel):
     title: str
     company: str
     description: str
-    url: str
 
 class CoverLetterRequest(BaseModel):
     job_details: JobDetails
     resume_text: str
+    model: str = "llama-3.1-8b-instruct"  # default value
 
 @app.post("/upload-resume")
 async def upload_resume(file: UploadFile):
@@ -50,21 +50,23 @@ async def upload_resume(file: UploadFile):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-async def generate_cover_letter_stream(job_details: JobDetails,resume_text: str):
+async def generate_cover_letter_stream(job_details: JobDetails,resume_text: str, model: str):
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.post(
-                "https://api.perplexity.ai/chat/completions",
-                headers={
+            if model == "llama-3.1-8b-instruct":
+
+                response = await client.post(
+                    "https://api.perplexity.ai/chat/completions",
+                    headers={
                     "Authorization": f"Bearer {os.getenv('PERPLEXITY_API_KEY')}",
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "llama-3.1-8b-instruct",
+                    "model": model,
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are a professional cover letter writer. Provide only the cover letter content without any additional commentary, explanations, or formatting instructions."
+                            "content": "You are a professional cover letter writer. Provide only the cover letter content without any additional commentary, explanations, or formatting instructions. Start with 'Dear Hiring Manager,'. and end with 'Sincerely,'. Do not included [general purpose fill in the blank] in your response."
                         },
                         {
                             "role": "user",
@@ -74,7 +76,30 @@ async def generate_cover_letter_stream(job_details: JobDetails,resume_text: str)
                     "stream": True
                 },
                 timeout=None
-            )
+                )
+            elif model =='mixtral-8x7b-32768':
+                response = await client.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={
+                    "Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": model,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a professional cover letter writer. Provide only the cover letter content without any additional commentary, explanations, or formatting instructions. Start with 'Dear Hiring Manager,'. and end with 'Sincerely,'. Do not included [general purpose fill in the blank] in your response."
+                        },
+                        {
+                            "role": "user",
+                            "content": f"Write a professional cover letter for a {job_details.title} position at {job_details.company}. Use my resume details to highlight relevant experience. Format it as a standard business letter. Job description: {job_details.description}. Resume: {resume_text}"
+                        }
+                    ],
+                    "stream": True
+                },
+                timeout=None
+                )
             
             async for line in response.aiter_lines():
                 if line.startswith("data: "):
@@ -84,17 +109,20 @@ async def generate_cover_letter_stream(job_details: JobDetails,resume_text: str)
                             yield f"data: {json.dumps({'content': content})}\n\n"
                     except json.JSONDecodeError:
                         continue
-                        
+
+                            
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 
 @app.post("/generate-cover-letter")
-async def generate_cover_letter(
-    request: CoverLetterRequest
-):
+async def generate_cover_letter(request: CoverLetterRequest):
     return StreamingResponse(
-        generate_cover_letter_stream(request.job_details, request.resume_text),
+        generate_cover_letter_stream(
+            request.job_details, 
+            request.resume_text,
+            request.model
+        ),
         media_type="text/event-stream"
     )
 

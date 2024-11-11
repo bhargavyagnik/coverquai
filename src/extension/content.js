@@ -13,15 +13,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   
   function scrapeCurrentPage() {
-    // This is a basic example - you'll need to customize based on specific job sites
-    // const title = document.querySelector('h1')?.textContent || 'Job Title';
-    const company = document.querySelector('')?.textContent || 'Company Name';
-    const description = document.querySelector('#job-details > div > p')?.textContent || '';
-    
+    if (window.location.href.includes('indeed.com')) {
+        description = document.querySelector('#job-details > div > p')?.textContent || '';
+    }
+    if (window.location.href.includes('linkedin.com')) {
+      const description = document.querySelector('#job-details > div > p')?.textContent || '';
+      return {
+        title: "Job",//title.trim(),
+        company: "Company",//company.trim(),
+        description: description,//description.trim(),
+      };
+    }
+
     return {
       title: "Job",//title.trim(),
       company: "Company",//company.trim(),
       description: "Description",//description.trim(),
-      url: window.location.href
     };
   }
