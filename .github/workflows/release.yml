@@ -1,0 +1,69 @@
+name: Release Chrome Extension
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for changelog generation
+
+      - name: Read manifest.json
+        id: manifest
+        run: |
+          VERSION=$(jq -r .version src/extension/manifest.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          # Get the last tag (if any)
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$LAST_TAG" ]; then
+            # If no previous tag exists, get all commits
+            CHANGELOG=$(git log --pretty=format:"* %s (%h)" --no-merges)
+          else
+            # Get commits since last tag
+            CHANGELOG=$(git log ${LAST_TAG}..HEAD --pretty=format:"* %s (%h)" --no-merges)
+          fi
+          
+          # Escape newlines and special characters for GitHub Actions
+          CHANGELOG="${CHANGELOG//'%'/'%25'}"
+          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
+          
+          echo "changelog=$CHANGELOG" >> $GITHUB_OUTPUT
+
+      - name: Create ZIP file
+        run: |
+          cd src/extension
+          zip -r ../../extension-v${{ steps.manifest.outputs.version }}.zip .
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.manifest.outputs.version }}
+          name: Release v${{ steps.manifest.outputs.version }}
+          body: |
+            ## What's Changed
+            ${{ steps.changelog.outputs.changelog }}
+            
+            ## Installation
+            1. Download the extension-v${{ steps.manifest.outputs.version }}.zip file
+            2. Unzip the file
+            3. Go to chrome://extensions/
+            4. Enable "Developer mode"
+            5. Click "Load unpacked"
+            6. Select the unzipped folder
+          files: extension-v${{ steps.manifest.outputs.version }}.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
