@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -43,7 +45,7 @@ jobs:
       - name: Create ZIP file
         run: |
           cd src/extension
-          zip -r ../../extension-v${{ steps.manifest.outputs.version }}.zip .
+          zip -r ../../coverquai-v${{ steps.manifest.outputs.version }}.zip .
 
       - name: Create Release
         id: create_release
@@ -62,7 +64,7 @@ jobs:
             4. Enable "Developer mode"
             5. Click "Load unpacked"
             6. Select the unzipped folder
-          files: extension-v${{ steps.manifest.outputs.version }}.zip
+          files: coverquai-v${{ steps.manifest.outputs.version }}.zip
           draft: false
           prerelease: false
         env:
