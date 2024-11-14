@@ -92,6 +92,17 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     });
 
+    // Add this near the top of your DOMContentLoaded event listener
+    const overlay = document.createElement('div');
+    overlay.className = 'overlay';
+    overlay.innerHTML = `
+        <div class="overlay-content">
+            <div class="spinner"></div>
+            <div class="overlay-text">Generating cover letter...</div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
     // Handle generate button click
     document.getElementById('generateBtn').addEventListener('click', async () => {
         if (!resumeData) {
@@ -122,7 +133,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         }
 
-        statusDiv.textContent = 'Generating cover letter...';
+        // Show overlay
+        overlay.style.display = 'flex';
         
         try {
             const jobDetails = {
@@ -133,9 +145,27 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             const coverLetter = await generateCoverLetter(jobDetails, resumeData);
             previewDiv.textContent = coverLetter;
-            statusDiv.textContent = 'Cover letter generated successfully!';
+
+            const overlayText = overlay.querySelector('.overlay-text');
+            overlayText.textContent = 'Cover letter generated successfully!';
+            overlay.style.display = 'none';
+            
+            // Hide overlay after a short delay
+            // setTimeout(() => {
+            //     overlay.style.display = 'none';
+            //     statusDiv.textContent = 'Cover letter generated successfully!';
+            // }, 100);
+            
         } catch (error) {
-            statusDiv.textContent = 'Error generating cover letter: ' + error.message;
+            // Update overlay text to show error
+            const overlayText = overlay.querySelector('.overlay-text');
+            overlayText.textContent = 'Error: ' + error.message;
+            
+            // Hide overlay after a short delay
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                statusDiv.textContent = 'Error generating cover letter: ' + error.message;
+            }, 2000);
         }
     });
 
@@ -158,14 +188,14 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Optional: Add a clear form button
     const clearFormBtn = document.createElement('button');
-    clearFormBtn.textContent = 'Clear Form';
+    clearFormBtn.textContent = 'Clear Job Details';
     clearFormBtn.onclick = () => {
         document.getElementById('jobTitle').value = '';
         document.getElementById('companyName').value = '';
         document.getElementById('jobDescription').value = '';
         chrome.storage.local.remove(['jobTitle', 'companyName', 'jobDescription']);
     };
-    document.querySelector('.container').insertBefore(clearFormBtn, document.getElementById('status'));
+    document.getElementById('additionalDetails').appendChild(clearFormBtn);
 
     // Handle download button click
     document.getElementById('downloadBtn').addEventListener('click', () => {
@@ -189,42 +219,48 @@ document.addEventListener('DOMContentLoaded', async function() {
             ? '- Additional Details' 
             : '+ Additional Details';
     });
+
+    // Add this at document load to ensure preview is hidden initially
+    previewDiv.style.display = 'none';
   });
   
   async function generateCoverLetter(jobDetails, resumeData) {
     const previewDiv = document.getElementById('preview');
     previewDiv.textContent = ''; // Clear existing content
+    previewDiv.style.display = 'none'; // Hide preview initially
     
     // Style the preview div for better text formatting
-    previewDiv.style.whiteSpace = 'pre-wrap'; // Preserves whitespace and line breaks
-    previewDiv.style.wordWrap = 'break-word'; // Ensures long lines wrap
+    previewDiv.style.whiteSpace = 'pre-wrap';
+    previewDiv.style.wordWrap = 'break-word';
     previewDiv.style.fontFamily = 'Arial, sans-serif';
     previewDiv.style.lineHeight = '1.5';
     previewDiv.style.padding = '10px';
   
     return new Promise((resolve, reject) => {
-      const port = chrome.runtime.connect({ name: 'coverLetterStream' });
-      let fullText = '';
-      
-      port.onMessage.addListener((message) => {
-        if (message.type === 'stream') {
-          // Accumulate the full text
-          fullText += message.content;
-          
-          // Format and display the text
-          const formattedText = formatCoverLetter(fullText);
-          previewDiv.innerHTML = formattedText;
-        } else if (message.type === 'done') {
-          resolve(fullText);
-        } else if (message.type === 'error') {
-          reject(new Error(message.error));
-        }
-      });
-  
-      port.postMessage({
-        action: 'generateCoverLetter',
-        data: { jobDetails, resumeData }
-      });
+        const port = chrome.runtime.connect({ name: 'coverLetterStream' });
+        let fullText = '';
+        
+        port.onMessage.addListener((message) => {
+            if (message.type === 'stream') {
+                fullText += message.content;
+                
+                // Show preview div when content starts coming in
+                previewDiv.style.display = 'block';
+                
+                // Format and display the text
+                const formattedText = formatCoverLetter(fullText);
+                previewDiv.innerHTML = formattedText;
+            } else if (message.type === 'done') {
+                resolve(fullText);
+            } else if (message.type === 'error') {
+                reject(new Error(message.error));
+            }
+        });
+        
+        port.postMessage({
+            action: 'generateCoverLetter',
+            data: { jobDetails, resumeData }
+        });
     });
   }
 

@@ -23,7 +23,7 @@ A Chrome extension that automatically generates personalized cover letters using
 ## 📥 Installation
 
 ### From Chrome Web Store
-1. Visit the [Chrome Web Store](#)
+1. Visit the [Chrome Web Store](https://chromewebstore.google.com/detail/coverquai/jjmakcdlooapngkpaahaiohafnkhifjk)
 2. Click "Add to Chrome"
 3. Follow the installation prompts
 
