@@ -30,10 +30,11 @@ app.add_middleware(
 )
 
 # Configure logging
+LOG_DIR = "/tmp"
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    filename='api_calls.log'
+    filename=os.path.join(LOG_DIR, 'api_calls.log')
 )
 logger = logging.getLogger(__name__)
 
@@ -70,10 +71,11 @@ async def upload_resume(file: UploadFile):
         raise HTTPException(status_code=500, detail=str(e))
 
 def log_to_csv(data: dict):
+    csv_path = os.path.join(LOG_DIR, 'api_calls.csv')
     fieldnames = ['timestamp', 'request_id', 'model', 'resume_preview', 'job_title', 'company', 'status']
     try:
-        file_exists = os.path.isfile('api_calls.csv')
-        with open('api_calls.csv', 'a', newline='') as csvfile:
+        file_exists = os.path.isfile(csv_path)
+        with open(csv_path, 'a', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             if not file_exists:
                 writer.writeheader()
