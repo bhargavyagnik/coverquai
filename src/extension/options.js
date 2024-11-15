@@ -1,7 +1,15 @@
+const DEFAULT_SYSTEM_PROMPT = `Start with 'Dear Hiring Manager,' and end with 'Sincerely,' followed by just name. 
+Paragraph 1: Introduction. Who you are, what you do, and what position you're applying for.
+Paragraph 2: Summarize your experience.
+Paragraph 3: How your experience translates to the job. 
+Paragraph 4: Closing and contact information.`;
+
+
 // Saves options to chrome.storage
 function saveOptions() {
     const modelSelect = document.getElementById('modelSelect').value;
     const coverLetterName = document.getElementById('coverLetterName').value;
+    const systemPrompt = document.getElementById('systemPrompt').value;
     const resumeInput = document.getElementById('defaultResume');
     const status = document.getElementById('status');
 
@@ -27,6 +35,7 @@ function saveOptions() {
                 chrome.storage.sync.set({
                     defaultModel: modelSelect,
                     coverLetterName: coverLetterName,
+                    systemPrompt: systemPrompt,
                     resumePath: file.name,
                     resumeText: data.resume_text
                 }, resolve);
@@ -41,7 +50,8 @@ function saveOptions() {
             // Save without updating resume
             chrome.storage.sync.set({
                 defaultModel: modelSelect,
-                coverLetterName: coverLetterName
+                coverLetterName: coverLetterName,
+                systemPrompt: systemPrompt
             }, resolve);
         }
     });
@@ -61,10 +71,12 @@ function restoreOptions() {
     chrome.storage.sync.get({
         defaultModel: 'llama-3.1-8b-instruct',
         coverLetterName: 'cover-letter-{company}',
-        resumePath: ''
+        resumePath: '',
+        systemPrompt: DEFAULT_SYSTEM_PROMPT
     }, (items) => {
         document.getElementById('modelSelect').value = items.defaultModel;
         document.getElementById('coverLetterName').value = items.coverLetterName;
+        document.getElementById('systemPrompt').value = items.systemPrompt;
         document.getElementById('currentResumePath').textContent = 
             items.resumePath ? `Current resume: ${items.resumePath}` : 'No resume selected';
     });
@@ -78,4 +90,10 @@ document.getElementById('coverLetterName').addEventListener('input', function(e)
     const preview = e.target.value.replace('{company}', 'Example Corp');
     const helpText = e.target.nextElementSibling;
     helpText.textContent = `Preview: ${preview}.pdf`;
+});
+
+// Add reset prompt handler
+document.getElementById('resetPrompt').addEventListener('click', function() {
+    document.getElementById('systemPrompt').value = DEFAULT_SYSTEM_PROMPT;
+    saveOptions();
 }); 

@@ -266,16 +266,20 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   function formatCoverLetter(text) {
     return text
-      // Replace multiple newlines with proper paragraph breaks
-      .replace(/\n{2,}/g, '</p><p>')
-      // Replace single newlines with line breaks
-      .replace(/\n/g, '<br>')
-      // Wrap in paragraphs if not already wrapped
-      .replace(/^(.+)$/, '<p>$1</p>')
-      // Clean up any empty paragraphs
-      .replace(/<p>\s*<\/p>/g, '')
-      // Ensure consistent spacing around paragraphs
-      .replace(/<\/p><p>/g, '</p>\n\n<p>');
+        // Ensure consistent paragraph breaks
+        .replace(/([.!?])\s+([A-Z])/g, '$1</p><p>$2')
+        // Handle the signature line
+        .replace(/(Sincerely,.*?[A-Za-z]+)/, '</p><p>$1</p>')
+        // Replace remaining newlines with line breaks
+        .replace(/\n/g, '<br>')
+        // Wrap in paragraphs if not already wrapped
+        .replace(/^(.+)$/, '<p>$1</p>')
+        // Clean up any empty paragraphs
+        .replace(/<p>\s*<\/p>/g, '')
+        // Ensure consistent spacing around paragraphs
+        .replace(/<\/p><p>/g, '</p>\n\n<p>')
+        // Clean up any duplicate breaks
+        .replace(/<br\s*\/?>\s*<br\s*\/?>/g, '<br>');
   }
 
 

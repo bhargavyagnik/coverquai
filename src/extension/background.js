@@ -1,3 +1,10 @@
+const DEFAULT_SYSTEM_PROMPT = `Start with 'Dear Hiring Manager,' and end with 'Sincerely,' followed by just name. 
+Paragraph 1: Introduction. Who you are, what you do, and what position you're applying for.
+Paragraph 2: Summarize your experience.
+Paragraph 3: How your experience translates to the job. 
+Paragraph 4: Closing and contact information.`;
+
+
 chrome.runtime.onInstalled.addListener(() => {
     console.log('Coverquai Extension installed');
   });
@@ -29,10 +36,10 @@ chrome.runtime.onInstalled.addListener(() => {
 
   async function handleLLMRequest(data, port) {
     try {
-        // Get settings from storage
         const settings = await chrome.storage.sync.get({
             defaultModel: 'llama-3.1-8b-instruct',
-            resumeText: data.resumeData // Fall back to provided resume if no default
+            resumeText: data.resumeData,
+            systemPrompt: DEFAULT_SYSTEM_PROMPT
         });
         
         const response = await fetch('https://cvwriter-bhargavyagniks-projects.vercel.app/generate-cover-letter', {
@@ -44,7 +51,8 @@ chrome.runtime.onInstalled.addListener(() => {
             body: JSON.stringify({
                 job_details: data.jobDetails,
                 resume_text: settings.resumeText,
-                model: settings.defaultModel // Add model to your API request
+                model: settings.defaultModel,
+                system_prompt: settings.systemPrompt
             })
         });
 
@@ -52,10 +60,11 @@ chrome.runtime.onInstalled.addListener(() => {
             throw new Error(`API request failed: ${response.statusText}`);
         }
 
-        // Create a new ReadableStream from the response
         const reader = response.body
             .pipeThrough(new TextDecoderStream())
             .getReader();
+
+        let buffer = '';
 
         while (true) {
             const { done, value } = await reader.read();
@@ -65,9 +74,12 @@ chrome.runtime.onInstalled.addListener(() => {
                 break;
             }
 
-            // Split the chunk into individual SSE messages
-            const messages = value.split('\n\n');
-            
+            buffer += value;
+            console.log('Buffer content:', buffer);
+            const messages = buffer.split('\n\n');
+            console.log('Messages:', messages);
+            buffer = messages.pop() || '';
+
             for (const message of messages) {
                 if (!message.trim() || !message.startsWith('data: ')) continue;
                 
@@ -96,7 +108,6 @@ chrome.runtime.onInstalled.addListener(() => {
             error: 'Failed to generate cover letter: ' + error.message
         });
     } finally {
-        // Ensure we always send a done message
         port.postMessage({ type: 'done' });
     }
 }

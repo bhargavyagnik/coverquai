@@ -145,8 +145,16 @@
             <label for="modelSelect">Default AI Model:</label>
             <select id="modelSelect">
                 <option value="llama-3.1-8b-instruct">Llama 3.1 8B</option>
-                <!-- <option value="mixtral-8x7b-32768">Mixtral 8x7B</option> -->
+                <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                <option value="llama-3.1-8b-instant">Llama 3.1 8B (Faster)</option>
             </select>
+        </div>
+
+        <div class="setting-group">
+            <label for="systemPrompt">AI System Prompt:</label>
+            <textarea id="systemPrompt" rows="8" style="width: 96%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; resize: vertical;"></textarea>
+            <button id="resetPrompt" style="margin-top: 8px; background-color: #64748b;">Reset to Default</button>
+            <p class="help-text">Customize how the AI generates cover letters. Use {position}, {company}, and {description} as placeholders.</p>
         </div>
 
         <div class="button-group">
