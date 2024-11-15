@@ -8,8 +8,6 @@ from typing import Optional
 from pydantic import BaseModel
 import httpx
 import os
-import csv
-from datetime import datetime
 import logging
 import uuid
 
@@ -34,7 +32,10 @@ LOG_DIR = "/tmp"
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    filename=os.path.join(LOG_DIR, 'api_calls.log')
+    handlers=[
+        logging.FileHandler(os.path.join(LOG_DIR, 'api_calls.log')),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -70,34 +71,16 @@ async def upload_resume(file: UploadFile):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-def log_to_csv(data: dict):
-    csv_path = os.path.join(LOG_DIR, 'api_calls.csv')
-    fieldnames = ['timestamp', 'request_id', 'model', 'resume_preview', 'job_title', 'company', 'status']
-    try:
-        file_exists = os.path.isfile(csv_path)
-        with open(csv_path, 'a', newline='') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            if not file_exists:
-                writer.writeheader()
-            writer.writerow(data)
-    except Exception as e:
-        logger.error(f"Error writing to CSV: {str(e)}")
-
 async def generate_cover_letter_stream(job_details: JobDetails, resume_text: str, model: str, system_prompt: str):
     request_id = str(uuid.uuid4())
-    logger.info(f"Starting generation for request {request_id}")
     
-    # Log the request to CSV
-    log_data = {
-        'timestamp': datetime.now().isoformat(),
-        'request_id': request_id,
-        'model': model,
-        'resume_preview': resume_text[:100],
-        'job_title': job_details.title,
-        'company': job_details.company,
-        'status': 'started'
-    }
-    log_to_csv(log_data)
+    logger.info(
+        f"Starting generation for request {request_id} | "
+        f"Model: {model} | "
+        f"Job Title: {job_details.title} | "
+        f"Company: {job_details.company} | "
+        f"Resume Preview: {resume_text[:100]}"
+    )
 
     async with httpx.AsyncClient() as client:
         try:
@@ -124,9 +107,7 @@ async def generate_cover_letter_stream(job_details: JobDetails, resume_text: str
                         "stream": True
                     },
                     timeout=None)
-                # Update CSV with completion status
-                log_data['status'] = 'completed'
-                log_to_csv(log_data)
+                logger.info(f"Request {request_id} completed successfully")
                 
                 async for line in response.aiter_lines():
                     if line.startswith("data: "):
@@ -158,9 +139,7 @@ async def generate_cover_letter_stream(job_details: JobDetails, resume_text: str
                     ],
                     "stream": True,
                 })
-                # Update CSV with completion status
-                log_data['status'] = 'completed'
-                log_to_csv(log_data)
+                logger.info(f"Request {request_id} completed successfully")
                 
                 async for line in response.aiter_lines():
                     if line.startswith("data: "):
@@ -175,10 +154,7 @@ async def generate_cover_letter_stream(job_details: JobDetails, resume_text: str
                             continue
 
         except Exception as e:
-            logger.error(f"Error in request {request_id}: {str(e)}")
-            # Log error status to CSV
-            log_data['status'] = f'error: {str(e)}'
-            log_to_csv(log_data)
+            logger.error(f"Error in request {request_id}: {str(e)}", exc_info=True)
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 
