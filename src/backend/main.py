@@ -10,10 +10,15 @@ import httpx
 import os
 app = FastAPI()
 
+master_prompt = """
+You are a professional cover letter writer. Provide only the cover letter content without any additional commentary, explanations, or formatting instructions. 
+Do not included any extra text like [general purpose fill in the blank], or any other instructions in your response.
+"""
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["chrome-extension://*"],
+    allow_origins=["chrome-extension://*","http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,7 +32,8 @@ class JobDetails(BaseModel):
 class CoverLetterRequest(BaseModel):
     job_details: JobDetails
     resume_text: str
-    model: str = "llama-3.1-8b-instruct"  # default value
+    model: str = "llama-3.1-8b-instruct"
+    system_prompt: str
 
 @app.post("/upload-resume")
 async def upload_resume(file: UploadFile):
@@ -50,33 +56,31 @@ async def upload_resume(file: UploadFile):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-async def generate_cover_letter_stream(job_details: JobDetails,resume_text: str, model: str):
+async def generate_cover_letter_stream(job_details: JobDetails, resume_text: str, model: str, system_prompt: str):
     async with httpx.AsyncClient() as client:
         try:
-            
             if model == "llama-3.1-8b-instruct":
-
                 response = await client.post(
                     "https://api.perplexity.ai/chat/completions",
                     headers={
-                    "Authorization": f"Bearer {os.getenv('PERPLEXITY_API_KEY')}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": model,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "You are a professional cover letter writer. Provide only the cover letter content without any additional commentary, explanations, or formatting instructions. Start with 'Dear Hiring Manager,'. and end with 'Sincerely,'. Do not included [general purpose fill in the blank] in your response."
-                        },
-                        {
-                            "role": "user",
-                            "content": f"Write a professional cover letter for a {job_details.title} position at {job_details.company}. Use my resume details to highlight relevant experience. Format it as a standard business letter. Job description: {job_details.description}. Resume: {resume_text}"
-                        }
-                    ],
-                    "stream": True
-                },
-                timeout=None)
+                        "Authorization": f"Bearer {os.getenv('PERPLEXITY_API_KEY')}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": model,
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": master_prompt+system_prompt.format(position=job_details.title, company=job_details.company, description=job_details.description)
+                            },
+                            {
+                                "role": "user",
+                                "content": f"Write a professional cover letter for a {job_details.title} position at {job_details.company}. Use my resume details to highlight relevant experience. Format it as a standard business letter. Job description: {job_details.description}. Resume: {resume_text}"
+                            }
+                        ],
+                        "stream": True
+                    },
+                    timeout=None)
                 async for line in response.aiter_lines():
                     if line.startswith("data: "):
                         try:
@@ -85,8 +89,7 @@ async def generate_cover_letter_stream(job_details: JobDetails,resume_text: str,
                                 yield f"data: {json.dumps({'content': content})}\n\n"
                         except json.JSONDecodeError:
                             continue
-            elif model =='mixtral-8x7b-32768':
-                print(f"Bearer {os.getenv('GROQ_API_KEY')}")
+            else:
                 response = await client.post(
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={
@@ -94,11 +97,11 @@ async def generate_cover_letter_stream(job_details: JobDetails,resume_text: str,
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": model,
+                    "model": "mixtral-8x7b-32768",
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are a professional cover letter writer. Provide only the cover letter content without any additional commentary, explanations, or formatting instructions. Start with 'Dear Hiring Manager,'. and end with 'Sincerely,'. Do not included [general purpose fill in the blank] in your response."
+"content": master_prompt+system_prompt.format(position=job_details.title, company=job_details.company, description=job_details.description)
                         },
                         {
                             "role": "user",
@@ -108,7 +111,6 @@ async def generate_cover_letter_stream(job_details: JobDetails,resume_text: str,
                     "stream": True,
                 })
                 async for line in response.aiter_lines():
-                    print(line)
                     if line.startswith("data: "):
                         try:
                             if line.strip() == "data: [DONE]":
@@ -116,8 +118,7 @@ async def generate_cover_letter_stream(job_details: JobDetails,resume_text: str,
                                 
                             data = json.loads(line[6:])  # Remove "data: " prefix
                             if content := data.get("choices", [{}])[0].get("delta", {}).get("content"):
-                                if content.strip():  # Only yield non-empty content
-                                    yield f"data: {json.dumps({'content': content})}\n\n"
+                                yield f"data: {json.dumps({'content': content})}\n\n"
                         except json.JSONDecodeError:
                             continue
 
@@ -132,7 +133,8 @@ async def generate_cover_letter(request: CoverLetterRequest):
         generate_cover_letter_stream(
             request.job_details, 
             request.resume_text,
-            request.model
+            request.model,
+            request.system_prompt
         ),
         media_type="text/event-stream"
     )

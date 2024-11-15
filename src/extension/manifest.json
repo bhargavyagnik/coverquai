@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Coverquai",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "description": "Automatically generate cover letters based on job descriptions",
     "icons": {
       "16": "icons/icon16.png",
