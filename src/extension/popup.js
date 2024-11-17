@@ -1,4 +1,22 @@
+import AuthService from './services/auth.js';
+
 document.addEventListener('DOMContentLoaded', async function() {
+    // Check authentication
+    const isAuthenticated = await AuthService.isAuthenticated();
+    if (!isAuthenticated) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    // Add logout button
+    const logoutBtn = document.createElement('button');
+    logoutBtn.textContent = 'Logout';
+    logoutBtn.onclick = async () => {
+        await AuthService.logout();
+        window.location.href = 'login.html';
+    };
+    document.querySelector('.container').appendChild(logoutBtn);
+
     let resumeData = null;
     const statusDiv = document.getElementById('status');
     const previewDiv = document.getElementById('preview');
