@@ -71,6 +71,9 @@ class SignInRequest(BaseModel):
     email: str
     password: str
 
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
 # Auth dependency
 async def verify_token(authorization: Annotated[str | None, Header()] = None):
     if not authorization or not authorization.startswith("Bearer "):
@@ -93,6 +96,7 @@ async def signup(request: SignUpRequest):
         })
         return response.dict()
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/auth/login")
@@ -114,8 +118,9 @@ async def logout(user = Depends(verify_token)):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @app.post("/upload-resume")
-async def upload_resume(file: UploadFile, user = Depends(verify_token)):
+async def upload_resume(file: UploadFile,user = Depends(verify_token)):
     try:
         content = await file.read()
         
@@ -140,6 +145,7 @@ async def store_generation_request(
     job_details: JobDetails,
     model: str,
     resume_preview: str,
+    userid: str,
     status: str = 'started',
     error: str = None,
 ):
@@ -148,8 +154,10 @@ async def store_generation_request(
             'id': request_id,
             'job_title': job_details.title,
             'company': job_details.company,
+            'job_descr': job_details.description,
             'model': model,
             'resume_preview': resume_preview,
+            'userid': userid,
             'response_status': status,
             'error': error,
             'created_at': datetime.utcnow().isoformat(),
@@ -169,16 +177,17 @@ async def update_generation_status(request_id: str, status: str, error: str = No
     except Exception as e:
         logger.error(f"Failed to update request status in Supabase: {str(e)}")
 
-async def generate_cover_letter_stream(job_details: JobDetails, resume_text: str, model: str, system_prompt: str):
+async def generate_cover_letter_stream(job_details: JobDetails, resume_text: str, model: str, system_prompt: str,userid:str):
     request_id = str(uuid.uuid4())
     
     # Store initial request
-    await store_generation_request(request_id, job_details, model,resume_text[:500])
+    await store_generation_request(request_id, job_details, model,resume_text[:500],userid)
     
     logger.info(
         f"Starting generation for request {request_id} | "
         f"Model: {model} | "
-        f"Resume Preview: {resume_text[:10]}"
+        f"Resume Preview: {resume_text[:10]} | "
+        f"User ID: {userid}"
     )
 
     async with httpx.AsyncClient() as client:
@@ -261,14 +270,15 @@ async def generate_cover_letter_stream(job_details: JobDetails, resume_text: str
 
 
 @app.post("/generate-cover-letter")
-async def generate_cover_letter(request: CoverLetterRequest):
+async def generate_cover_letter(request: CoverLetterRequest,user = Depends(verify_token)):
     logger.info(f"Received cover letter request for {request.job_details.company}")
     return StreamingResponse(
         generate_cover_letter_stream(
             request.job_details, 
             request.resume_text,
             request.model,
-            request.system_prompt
+            request.system_prompt,
+            user.user.id
         ),
         media_type="text/event-stream"
     )
@@ -279,3 +289,29 @@ async def health_check():
         "status": "alive",
         "service": "cover-letter-generator"
     }
+
+@app.get("/auth/verify")
+async def verify_access_token(user = Depends(verify_token)):
+    try:
+        return {
+            "valid": True,
+            "user": {
+                "id": user.user.id,
+                "email": user.user.email
+            }
+        }
+    except Exception as e:
+        logger.error(f"Token verification failed: {str(e)}")
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+@app.post("/auth/refresh")
+async def refresh_token(request: RefreshTokenRequest):
+    try:
+        response = supabase.auth.refresh_session(request.refresh_token)
+        return {
+            "access_token": response.session.access_token,
+            "refresh_token": response.session.refresh_token
+        }
+    except Exception as e:
+        logger.error(f"Token refresh failed: {str(e)}")
+        raise HTTPException(status_code=401, detail="Invalid refresh token")

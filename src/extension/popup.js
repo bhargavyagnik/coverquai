@@ -1,8 +1,11 @@
 import AuthService from './services/auth.js';
 
 document.addEventListener('DOMContentLoaded', async function() {
+    // Add a small delay to ensure storage is updated
+    // await new Promise(resolve => setTimeout(resolve, 100));
+    
     // Check authentication
-    const isAuthenticated = await AuthService.isAuthenticated();
+    const isAuthenticated = await AuthService.getValidToken();
     if (!isAuthenticated) {
         window.location.href = 'login.html';
         return;
@@ -63,13 +66,22 @@ document.addEventListener('DOMContentLoaded', async function() {
             try {
                 const formData = new FormData();
                 formData.append('file', file);
-        
-                const response = await fetch('https://cvwriter-bhargavyagniks-projects.vercel.app/upload-resume', {
+                const token = await AuthService.getValidToken();
+                const response = await fetch('https://cvwriter-git-dev-bhargavyagniks-projects.vercel.app/upload-resume', {
                     method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: formData
                 });
         
                 if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Please logout and try logging in again');
+                    }
+                    else if (response.status === 400) {
+                        throw new Error('Unsupported file type');
+                    }
                     throw new Error('Failed to upload resume');
                 }
         

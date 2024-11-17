@@ -1,3 +1,5 @@
+import { AuthService } from './services/auth.js';
+
 const DEFAULT_SYSTEM_PROMPT = `Start with 'Dear Hiring Manager,' and end with 'Sincerely,' followed by just name. 
 Paragraph 1: Introduction. Who you are, what you do, and what position you're applying for.
 Paragraph 2: Summarize your experience.
@@ -36,14 +38,14 @@ chrome.runtime.onInstalled.addListener(() => {
 
   async function handleLLMRequest(data, port) {
     try {
-        const token = await AuthService.getToken();
+        const token = await AuthService.getValidToken();
         const settings = await chrome.storage.sync.get({
             defaultModel: 'llama-3.1-8b-instruct',
             resumeText: data.resumeData,
             systemPrompt: DEFAULT_SYSTEM_PROMPT
         });
         
-        const response = await fetch('https://cvwriter-bhargavyagniks-projects.vercel.app/generate-cover-letter', {
+        const response = await fetch('https://cvwriter-git-dev-bhargavyagniks-projects.vercel.app/generate-cover-letter', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -59,6 +61,9 @@ chrome.runtime.onInstalled.addListener(() => {
         });
 
         if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('Please logout and try logging in again');
+            }
             throw new Error(`API request failed: ${response.statusText}`);
         }
 
