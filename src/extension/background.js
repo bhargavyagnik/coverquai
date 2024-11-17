@@ -36,6 +36,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
   async function handleLLMRequest(data, port) {
     try {
+        const token = await AuthService.getToken();
         const settings = await chrome.storage.sync.get({
             defaultModel: 'llama-3.1-8b-instruct',
             resumeText: data.resumeData,
@@ -46,7 +47,8 @@ chrome.runtime.onInstalled.addListener(() => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'text/event-stream'
+                'Accept': 'text/event-stream',
+                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
                 job_details: data.jobDetails,
