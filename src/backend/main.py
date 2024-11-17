@@ -8,7 +8,10 @@ from typing import Optional, Annotated
 from pydantic import BaseModel
 import httpx
 import os
+import logging
+import uuid
 from supabase import create_client, Client
+from datetime import datetime
 
 app = FastAPI()
 
@@ -30,6 +33,22 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Initialize Supabase client
+supabase = create_client(
+    os.getenv('SUPABASE_URL'),
+    os.getenv('SUPABASE_KEY')
 )
 
 class JobDetails(BaseModel):
@@ -116,10 +135,56 @@ async def upload_resume(file: UploadFile, user = Depends(verify_token)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+async def store_generation_request(
+    request_id: str,
+    job_details: JobDetails,
+    model: str,
+    resume_preview: str,
+    status: str = 'started',
+    error: str = None,
+):
+    try:
+        data = {
+            'id': request_id,
+            'job_title': job_details.title,
+            'company': job_details.company,
+            'model': model,
+            'resume_preview': resume_preview,
+            'response_status': status,
+            'error': error,
+            'created_at': datetime.utcnow().isoformat(),
+        }
+        supabase.table('cover_letter_requests').insert(data).execute()
+    except Exception as e:
+        logger.error(f"Failed to store request in Supabase: {str(e)}")
+
+async def update_generation_status(request_id: str, status: str, error: str = None):
+    try:
+        data = {
+            'response_status': status,
+            'error': error,
+            'updated_at': datetime.utcnow().isoformat()
+        }
+        supabase.table('cover_letter_requests').update(data).eq('id', request_id).execute()
+    except Exception as e:
+        logger.error(f"Failed to update request status in Supabase: {str(e)}")
+
 async def generate_cover_letter_stream(job_details: JobDetails, resume_text: str, model: str, system_prompt: str):
+    request_id = str(uuid.uuid4())
+    
+    # Store initial request
+    await store_generation_request(request_id, job_details, model,resume_text[:500])
+    
+    logger.info(
+        f"Starting generation for request {request_id} | "
+        f"Model: {model} | "
+        f"Resume Preview: {resume_text[:10]}"
+    )
+
     async with httpx.AsyncClient() as client:
         try:
             if model == "llama-3.1-8b-instruct":
+                logger.info(f"Calling Perplexity API for request {request_id}")
                 response = await client.post(
                     "https://api.perplexity.ai/chat/completions",
                     headers={
@@ -141,6 +206,9 @@ async def generate_cover_letter_stream(job_details: JobDetails, resume_text: str
                         "stream": True
                     },
                     timeout=None)
+                logger.info(f"Request {request_id} completed successfully")
+                await update_generation_status(request_id, 'completed')
+                
                 async for line in response.aiter_lines():
                     if line.startswith("data: "):
                         try:
@@ -150,6 +218,7 @@ async def generate_cover_letter_stream(job_details: JobDetails, resume_text: str
                         except json.JSONDecodeError:
                             continue
             else:
+                logger.info(f"Calling Groq API for request {request_id}")
                 response = await client.post(
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={
@@ -170,6 +239,9 @@ async def generate_cover_letter_stream(job_details: JobDetails, resume_text: str
                     ],
                     "stream": True,
                 })
+                logger.info(f"Request {request_id} completed successfully")
+                await update_generation_status(request_id, 'completed')
+                
                 async for line in response.aiter_lines():
                     if line.startswith("data: "):
                         try:
@@ -182,13 +254,15 @@ async def generate_cover_letter_stream(job_details: JobDetails, resume_text: str
                         except json.JSONDecodeError:
                             continue
 
-                            
         except Exception as e:
+            logger.error(f"Error in request {request_id}: {str(e)}", exc_info=True)
+            await update_generation_status(request_id, 'failed', str(e))
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 
 @app.post("/generate-cover-letter")
-async def generate_cover_letter(request: CoverLetterRequest, user = Depends(verify_token)):
+async def generate_cover_letter(request: CoverLetterRequest):
+    logger.info(f"Received cover letter request for {request.job_details.company}")
     return StreamingResponse(
         generate_cover_letter_stream(
             request.job_details, 
