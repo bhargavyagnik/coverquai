@@ -1,9 +1,18 @@
+import { AuthService } from './services/auth.js';
 const DEFAULT_SYSTEM_PROMPT = `Start with 'Dear Hiring Manager,' and end with 'Sincerely,' followed by just name. 
 Paragraph 1: Introduction. Who you are, what you do, and what position you're applying for.
 Paragraph 2: Summarize your experience.
 Paragraph 3: How your experience translates to the job. 
 Paragraph 4: Closing and contact information.`;
 
+const API_URL = 'https://cvwriter-bhargavyagniks-projects.vercel.app';
+
+document.addEventListener('DOMContentLoaded', async function() {
+    const isAuthenticated = await AuthService.getValidToken();
+    if (!isAuthenticated) {
+        window.location.href = 'login.html';
+    }
+});
 
 // Saves options to chrome.storage
 function saveOptions() {
@@ -20,13 +29,22 @@ function saveOptions() {
             try {
                 const formData = new FormData();
                 formData.append('file', file);
-
-                const response = await fetch('https://cvwriter-bhargavyagniks-projects.vercel.app/upload-resume', {
+                const token = await AuthService.getValidToken();
+                const response = await fetch(`${API_URL}/upload-resume`, {
                     method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: formData
                 });
 
                 if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Please logout and try logging in again');
+                    }
+                    else if (response.status === 400) {
+                        throw new Error('Unsupported file type');
+                    }
                     throw new Error('Failed to upload resume');
                 }
 
@@ -96,4 +114,8 @@ document.getElementById('coverLetterName').addEventListener('input', function(e)
 document.getElementById('resetPrompt').addEventListener('click', function() {
     document.getElementById('systemPrompt').value = DEFAULT_SYSTEM_PROMPT;
     saveOptions();
+});
+
+document.getElementById('home').addEventListener('click', () => {
+    window.location.href = 'popup.html';
 }); 

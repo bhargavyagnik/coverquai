@@ -1,4 +1,27 @@
+import AuthService from './services/auth.js';
+const API_URL = 'https://cvwriter-bhargavyagniks-projects.vercel.app';
+
 document.addEventListener('DOMContentLoaded', async function() {
+    // Add a small delay to ensure storage is updated
+    // await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Check authentication
+    const isAuthenticated = await AuthService.getValidToken();
+    if (!isAuthenticated) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    // Add logout button
+    const logoutBtn = document.createElement('button');
+    logoutBtn.className = 'logout-btn';
+    logoutBtn.textContent = 'Logout';
+    logoutBtn.onclick = async () => {
+        await AuthService.logout();
+        window.location.href = 'login.html';
+    };
+    document.querySelector('.container').appendChild(logoutBtn);
+
     let resumeData = null;
     const statusDiv = document.getElementById('status');
     const previewDiv = document.getElementById('preview');
@@ -45,13 +68,22 @@ document.addEventListener('DOMContentLoaded', async function() {
             try {
                 const formData = new FormData();
                 formData.append('file', file);
-        
-                const response = await fetch('https://cvwriter-bhargavyagniks-projects.vercel.app/upload-resume', {
+                const token = await AuthService.getValidToken();
+                const response = await fetch(`${API_URL}/upload-resume`, {
                     method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: formData
                 });
         
                 if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Please logout and try logging in again');
+                    }
+                    else if (response.status === 400) {
+                        throw new Error('Unsupported file type');
+                    }
                     throw new Error('Failed to upload resume');
                 }
         
@@ -109,29 +141,27 @@ document.addEventListener('DOMContentLoaded', async function() {
             statusDiv.textContent = 'Please upload a resume or set a default resume first';
             return;
         }
-
+        try {
+            const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+            const response = await chrome.tabs.sendMessage(tab.id, {action: 'scrapeJobDetails'});
+            
+            if (response?.jobDetails) {
+                document.getElementById('jobTitle').value = response.jobDetails.title;
+                document.getElementById('companyName').value = response.jobDetails.company;
+                document.getElementById('jobDescription').value = response.jobDetails.description;
+            }
+        } catch (error) {
+            console.log('Could not scrape job details:', error);
+            statusDiv.textContent = 'Please fill in all job details';
+            return;
+        }
+        
         const jobTitle = document.getElementById('jobTitle').value.trim();
         const companyName = document.getElementById('companyName').value.trim();
         const jobDescription = document.getElementById('jobDescription').value.trim();
 
-        if (!jobDescription) {
             // Try to scrape job details from current tab first
-            try {
-                const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
-                const response = await chrome.tabs.sendMessage(tab.id, {action: 'scrapeJobDetails'});
-                
-                if (response?.jobDetails) {
-                    document.getElementById('jobTitle').value = response.jobDetails.title;
-                    document.getElementById('companyName').value = response.jobDetails.company;
-                    document.getElementById('jobDescription').value = response.jobDetails.description;
-                    return;
-                }
-            } catch (error) {
-                console.log('Could not scrape job details:', error);
-                statusDiv.textContent = 'Please fill in all job details';
-                return;
-            }
-        }
+        
 
         // Show overlay
         overlay.style.display = 'flex';
@@ -150,11 +180,24 @@ document.addEventListener('DOMContentLoaded', async function() {
             overlayText.textContent = 'Cover letter generated successfully!';
             overlay.style.display = 'none';
             
-            // Hide overlay after a short delay
-            // setTimeout(() => {
-            //     overlay.style.display = 'none';
-            //     statusDiv.textContent = 'Cover letter generated successfully!';
-            // }, 100);
+            try {
+                const token = await AuthService.getValidToken();
+                const response = await fetch(`${API_URL}/countgenerations`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('generationCount').textContent = data.count;
+                } else {
+                    document.getElementById('generationCount').textContent = '?';
+                }
+            } catch (error) {
+                console.error('Error fetching generation count:', error);
+                document.getElementById('generationCount').textContent = '?';
+            }
             
         } catch (error) {
             // Update overlay text to show error
@@ -222,6 +265,26 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Add this at document load to ensure preview is hidden initially
     previewDiv.style.display = 'none';
+
+    // Add this near the top of your DOMContentLoaded function
+    try {
+        const token = await AuthService.getValidToken();
+        const response = await fetch(`${API_URL}/countgenerations`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            document.getElementById('generationCount').textContent = data.count;
+        } else {
+            document.getElementById('generationCount').textContent = '?';
+        }
+    } catch (error) {
+        console.error('Error fetching generation count:', error);
+        document.getElementById('generationCount').textContent = '?';
+    }
   });
   
   async function generateCoverLetter(jobDetails, resumeData) {

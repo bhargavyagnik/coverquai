@@ -2,216 +2,12 @@
 <html>
 <head>
   <title>Coverquai</title>
-  <style>
-body {
-  width: 400px;
-  padding: 20px;
-  font-family: 'Segoe UI', 'Arial', sans-serif;
-  background-color: #f5f7fa;
-  color: #2c3e50;
-}
-
-.container {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  background-color: #ffffff;
-  padding: 24px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-button {
-  padding: 12px 16px;
-  cursor: pointer;
-  background-color: #2563eb;
-  border: none;
-  color: #ffffff;
-  font-weight: 600;
-  border-radius: 6px;
-  transition: background-color 0.2s ease;
-}
-
-button:hover {
-  background-color: #1d4ed8;
-}
-
-button:active {
-  transform: translateY(1px);
-}
-
-h2 {
-  color: #1e293b;
-  font-size: 1.5rem;
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-
-.dropdown-toggle {
-  background: none;
-  border: none;
-  color: #2563eb;
-  font-weight: 500;
-  text-align: left;
-  padding: 8px 0;
-  font-size: 15px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.dropdown-toggle:hover {
-  background-color: #ffffff;
-  color: #000000;
-}
-
-#preview {
-  background-color: #ffffff;
-  margin-top: 16px;
-  padding: 16px;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-input, textarea {
-  border-radius: 6px;
-  border: 1px solid #cbd5e1;
-  padding: 12px;
-  font-size: 14px;
-  transition: border-color 0.2s ease;
-  background-color: #ffffff;
-}
-
-input:focus, textarea:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
-#status, #resumeStatus {
-  color: #64748b;
-  font-size: 0.875rem;
-  margin-top: 4px;
-  margin-bottom: 4px;
-}
-
-/* Custom scrollbar for better visual appeal */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-.input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.input-group label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #475569;
-}
-
-.dropdown-content {
-  display: none;
-  padding: 16px;
-  background-color: #f8fafc;
-  border-radius: 6px;
-  margin-top: 8px;
-}
-
-.dropdown-content.active {
-  display: block;
-}
-
-textarea {
-  min-height: 100px;
-  resize: vertical;
-}
-
-.coffee-link {
-  text-align: center;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #e2e8f0;
-}
-
-.coffee-link a {
-  color: #64748b;
-  text-decoration: none;
-  font-size: 14px;
-  transition: color 0.2s ease;
-}
-
-.coffee-link a:hover {
-  color: #2563eb;
-}
-
-.overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.overlay-content {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    text-align: center;
-}
-
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #3498db;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 10px;
-}
-
-.overlay-text {
-    color: #333;
-    font-size: 14px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container">
     <img src="icons/icon16.png" alt="Coverquai" style="width: 24px; height: 24px;"><h2>Cover Letter AI</h2>
-    
+
     <div class="input-group">
       <label for="resumeUpload">Resume:</label>
       <div class="resume-container">
@@ -223,7 +19,6 @@ textarea {
     </div>
 
     <button id="generateBtn">Generate Cover Letter</button>
-    <button id="downloadBtn">Download (PDF)</button>
     <div id="status"></div>
 
     <div class="input-group">
@@ -243,16 +38,23 @@ textarea {
           <label for="jobDescription">Job Description:</label>
           <textarea id="jobDescription" placeholder="Paste job description here..."></textarea>
         </div>
+        <div class="input-group">
+          <a href="options.html" class="options-link">Advanced Settings</a>
+        </div>
       </div>
     </div>
     <div id="preview" contenteditable="true"></div>
-    
+    <button id="downloadBtn">Download (PDF)</button>
     <div class="coffee-link">
       <a href="https://buymeacoffee.com/bhargavyagnik" target="_blank">
-        <i class="fas fa-coffee"></i> Buy me a coffee</a>
+        <i class="fas fa-coffee"></i> Buy me a coffee</a> | 
+        <div class="generation-counter">
+          Generations Today: <span id="generationCount">-</span>
+      </div>
+      
     </div>
   </div>
   <script src="lib/jspdf.umd.min.js"></script>
-  <script src="popup.js"></script>
+  <script type="module" src="popup.js"></script>
 </body>
 </html>

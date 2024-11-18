@@ -4,65 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Coverquai - Chrome Extension</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            color: #333;
-        }
-
-        header {
-            background: linear-gradient(135deg, #2196F3, #1976D2);
-            color: white;
-            padding: 4rem 2rem;
-            text-align: center;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin: 3rem 0;
-        }
-
-        .feature-card {
-            background: #fff;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .cta-button {
-            display: inline-block;
-            background: #2196F3;
-            color: white;
-            padding: 1rem 2rem;
-            border-radius: 25px;
-            text-decoration: none;
-            font-weight: bold;
-            transition: background 0.3s;
-        }
-
-        .cta-button:hover {
-            background: #1976D2;
-        }
-
-        .demo-image {
-            max-width: 100%;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">Coverquai</a>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="how-to-use.html">How to Use</a>
+                <a href="tos.html">Terms of Service</a>
+            </div>
+        </div>
+    </nav>
+
     <header>
         <h1>Coverquai</h1>
         <p>Generate tailored cover letters instantly using AI</p>

@@ -1,0 +1,168 @@
+/* Common styles */
+:root {
+    --primary-color: #2196F3;
+    --primary-dark: #1976D2;
+    --text-color: #333;
+    --bg-light: #f8fafc;
+    --white: #ffffff;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    color: var(--text-color);
+}
+
+/* Navigation */
+.nav {
+    background-color: var(--white);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 1rem 2rem;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+}
+
+.nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-logo {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.nav-links {
+    display: flex;
+    gap: 2rem;
+}
+
+.nav-links a {
+    color: var(--text-color);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+.nav-links a:hover {
+    color: var(--primary-color);
+}
+
+/* Header */
+header {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    padding: 8rem 2rem 4rem;
+    text-align: center;
+}
+
+/* Container */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* Buttons */
+.cta-button {
+    display: inline-block;
+    background: var(--primary-color);
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 25px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+.cta-button:hover {
+    background: var(--primary-dark);
+}
+
+/* Features */
+.features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin: 3rem 0;
+}
+
+.feature-card {
+    background: var(--white);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* Sections */
+section {
+    margin: 4rem 0;
+}
+
+h2 {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+/* TOS Specific */
+.tos-container {
+    max-width: 800px;
+    margin: 6rem auto 2rem;
+    padding: 40px;
+}
+
+.tos-content {
+    background-color: var(--white);
+    padding: 32px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.step-image.reduced {
+    max-width: 70%;
+}
+
+.step-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.step-content {
+    margin-bottom: 20px;
+}
+
+.step-content h3 {
+    color: #333;
+    margin-bottom: 12px;
+}
+
+.step-content p {
+    color: #666;
+    line-height: 1.6;
+}
+
+.step-image-container {
+    background: #f5f5f5;
+    padding: 16px;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.step-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+} 
