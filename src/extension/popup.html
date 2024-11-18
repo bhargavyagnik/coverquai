@@ -7,7 +7,7 @@
 <body>
   <div class="container">
     <img src="icons/icon16.png" alt="Coverquai" style="width: 24px; height: 24px;"><h2>Cover Letter AI</h2>
-    
+
     <div class="input-group">
       <label for="resumeUpload">Resume:</label>
       <div class="resume-container">
@@ -47,7 +47,11 @@
     <button id="downloadBtn">Download (PDF)</button>
     <div class="coffee-link">
       <a href="https://buymeacoffee.com/bhargavyagnik" target="_blank">
-        <i class="fas fa-coffee"></i> Buy me a coffee</a>
+        <i class="fas fa-coffee"></i> Buy me a coffee</a> | 
+        <div class="generation-counter">
+          Generations Today: <span id="generationCount">-</span>
+      </div>
+      
     </div>
   </div>
   <script src="lib/jspdf.umd.min.js"></script>

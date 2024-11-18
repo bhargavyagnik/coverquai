@@ -5,6 +5,14 @@ Paragraph 2: Summarize your experience.
 Paragraph 3: How your experience translates to the job. 
 Paragraph 4: Closing and contact information.`;
 
+const API_URL = 'https://cvwriter-bhargavyagniks-projects.vercel.app';
+
+document.addEventListener('DOMContentLoaded', async function() {
+    const isAuthenticated = await AuthService.getValidToken();
+    if (!isAuthenticated) {
+        window.location.href = 'login.html';
+    }
+});
 
 // Saves options to chrome.storage
 function saveOptions() {
@@ -22,7 +30,7 @@ function saveOptions() {
                 const formData = new FormData();
                 formData.append('file', file);
                 const token = await AuthService.getValidToken();
-                const response = await fetch('https://cvwriter-git-dev-bhargavyagniks-projects.vercel.app/upload-resume', {
+                const response = await fetch(`${API_URL}/upload-resume`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, HTTPException, Depends, Header
+from fastapi import FastAPI, UploadFile, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import PyPDF2
@@ -11,7 +11,7 @@ import os
 import logging
 import uuid
 from supabase import create_client, Client
-from datetime import datetime
+from datetime import datetime, date
 
 app = FastAPI()
 
@@ -29,10 +29,27 @@ supabase: Client = create_client(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["chrome-extension://*","http://localhost:8000"],
+    allow_origins=[
+        "chrome-extension://*",
+        "http://localhost:8000",
+        "https://accounts.google.com",
+        "https://*.googleusercontent.com",
+        "https://oauth2.googleapis.com",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-Requested-With",
+        "Accept",
+        "Origin",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers",
+        "Access-Control-Allow-Origin",
+    ],
+    expose_headers=["*"],
+    max_age=600,  # Cache preflight requests for 10 minutes
 )
 
 # Configure logging
@@ -73,6 +90,10 @@ class SignInRequest(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
+# Add new auth model
+class GoogleAuthRequest(BaseModel):
+    credential: str  # This will be the ID token from Google
 
 # Auth dependency
 async def verify_token(authorization: Annotated[str | None, Header()] = None):
@@ -118,6 +139,19 @@ async def logout(user = Depends(verify_token)):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@app.post("/auth/google")
+async def google_auth(request: GoogleAuthRequest):
+    try:
+        print(request.credential)
+        # Verify the Google token and sign in/up with Supabase
+        response = supabase.auth.sign_in_with_id_token({
+            "provider": "google",
+            "token": request.credential
+        })
+        print(response.dict())
+        return response.dict()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/upload-resume")
 async def upload_resume(file: UploadFile,user = Depends(verify_token)):
@@ -315,3 +349,23 @@ async def refresh_token(request: RefreshTokenRequest):
     except Exception as e:
         logger.error(f"Token refresh failed: {str(e)}")
         raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+@app.get("/countgenerations")
+async def count_generations(user = Depends(verify_token)):
+    try:
+        # Get today's date in UTC
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        # Query Supabase using proper timestamp comparison
+        response = supabase.table('cover_letter_requests')\
+            .select('id')\
+            .eq('userid', user.user.id)\
+            .gte('created_at', f'{today}T00:00:00')\
+            .lt('created_at', f'{today}T23:59:59')\
+            .execute()
+            
+        count = len(response.data)
+        return {"count": count}
+    except Exception as e:
+        logger.error(f"Failed to count generations: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

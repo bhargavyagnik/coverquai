@@ -1,4 +1,4 @@
-const API_URL = 'https://cvwriter-git-dev-bhargavyagniks-projects.vercel.app';
+const API_URL = 'https://cvwriter-bhargavyagniks-projects.vercel.app';
 
 export class AuthService {
     static async signup(email, password) {
@@ -136,6 +136,25 @@ export class AuthService {
         }
         
         return await this.getToken();
+    }
+
+    static async loginWithGoogle() {
+        try {
+            const response = await chrome.runtime.sendMessage({ action: 'googleLogin' });
+            if (!response.success) {
+                throw new Error(response.error);
+            }
+            
+            // The popup will be reopened by the background script
+            // Just update the current view to dashboard
+            if (window.location.pathname.includes('popup.html')) {
+                window.location.href = 'dashboard.html';
+            }
+            return response.data;
+        } catch (error) {
+            console.error('Google login error:', error);
+            throw error;
+        }
     }
 }
 
